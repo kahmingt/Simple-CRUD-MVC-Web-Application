@@ -1,0 +1,101 @@
+﻿@model PagedList.IPagedList<Internal.Models.OrderViewPageModel>
+@using PagedList.Mvc;
+<link href="/Content/PagedList.css" rel="stylesheet" type="text/css" />
+@{
+    ViewBag.Title = "Order List";
+}
+@using (Html.BeginForm("Index", "Order", FormMethod.Get))
+{
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12 col-md-12 col-sm-12">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <h3 class="Title">@ViewBag.Title</h3>
+                        <hr />
+                        <div class="row">
+                            <div class="text-right">
+                                <div class="form-inline">
+                                    <div class="form-group">
+                                        @Html.TextBox("Search", "", new { @class = "form-control", @placeholder = "Search for..." })
+                                    </div>
+                                    <button class="btn btn-primary" type="submit" id="ButtonSearch">
+                                        <span class="glyphicon glyphicon-search"></span>&nbsp;&nbsp;Search
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <br /><br />
+                        <div class="row">
+                            <div class="table-responsive">
+                                <table class="table TableList table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Order Date</th>
+                                            <th>Customer Name</th>
+                                            <th>Product Category</th>
+                                            <th>Total Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in Model)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <a class="btn btn-primary" href="@Url.Action("Details", new { Mode = "View", OrderID = item.OrderID })"><span class="glyphicon glyphicon-eye-open"></span></a>
+                                                    <a class="btn btn-danger" data-target="#Modal" data-toggle="modal" href=""><span class="glyphicon glyphicon-trash"></span></a>
+                                                    <div class="fade modal" id="Modal" role="dialog">
+                                                        <div class="modal-dialog text-left">
+                                                            <div class="modal-content">
+                                                                <div class="modal-header">
+                                                                    <h4 class="Title">Delete</h4>
+                                                                </div>
+                                                                <div class="modal-body">
+                                                                    Permanently delete this record?
+                                                                </div>
+                                                                <div class="modal-footer">
+                                                                    <a class="btn btn-danger" href="@Url.Action("Delete", new { OrderID = Request["OrderID"] })"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Yes</a>
+                                                                    <button class="btn btn-primary" data-dismiss="modal" type="button"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;No</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>@item.OrderDate.ToString("yyyy-MM-dd")</td>
+                                                <td>@item.CustomerName</td>
+                                                <td>@item.CategoryName</td>
+                                                <td>@item.TotalCost.ToString("n2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12 col-md-12 col-sm-12" style="display: inline-flex; justify-content: space-between;">
+                                <div style="text-align: left; vertical-align: middle; display: inline-block; margin-top: 25px;">
+                                    @{
+                                        var entryBegin = (Model.PageSize * Model.PageNumber) - Model.PageSize + 1;
+                                        var entryEnd = Model.PageSize * Model.PageNumber;
+                                        var total = Model.TotalItemCount;
+                                        entryEnd = (entryEnd > total) ? total : entryEnd;
+                                    }
+                                    Showing @entryBegin to @entryEnd of @Model.TotalItemCount entries
+                                </div>
+                                <div style="text-align: right; display: inline-block;">
+                                    @Html.PagedListPager(Model, page => Url.Action("Index", new 
+                                    { 
+                                        page,
+                                        Search = ViewBag.CurrentSort,
+                                        Sort = ViewBag.CurrentFilter
+                                    }))
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
