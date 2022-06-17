@@ -1,0 +1,115 @@
+﻿@model Internal.Models.OrderDetailPageModel
+@{
+    ViewBag.Title = "Order Summary for " + Request["OrderID"];
+}
+@using (Html.BeginForm("Details", "Order", new { Mode = Request["Mode"], OrderID = Request["OrderID"] }, FormMethod.Post, new { enctype = "multipart/form-data" }))
+{
+    @Html.AntiForgeryToken()
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        @Html.Partial("Alert")
+                        <h3 class="Title">@ViewBag.Title</h3>
+                        <hr />
+                        @if (Request["Mode"] == "View")
+                        {
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <br />
+                                    <h4>Order Info</h4>
+                                    <div class="form-horizontal">
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label Field">Order Date</label>
+                                            <div class="col-sm-8">
+                                                @Html.TextBoxFor(x => Model.OrderDate, "{0:yyyy-MM-dd}", new { @class = "form-control", @readonly = "true", @type = "date" })
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label Field">Handled by</label>
+                                            <div class="col-sm-8">
+                                                @Html.TextBoxFor(x => x.EmployeeName, new { @class = "form-control", @readonly = "true" })
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label Field">Grand Total</label>
+                                            <div class="col-sm-8">
+                                                @Html.TextBoxFor(x => x.OrderGrandTotal, "{0:n2}", new { @class = "form-control", @readonly = "true" })
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <br />
+                                    <h4>Customer Details</h4>
+                                    <div class="form-horizontal">
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label Field">Recipient Name</label>
+                                            <div class="col-sm-8">
+                                                @Html.TextBoxFor(x => x.CustomerName, new { @class = "form-control", @readonly = "true" })
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label Field">Contact Number</label>
+                                            <div class="col-sm-8">
+                                                @Html.TextBoxFor(x => x.CustomerContactNumber, new { @class = "form-control", @readonly = "true" })
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label Field">Delivery Address</label>
+                                            <div class="col-sm-8">
+                                                @Html.TextAreaFor(x => x.CustomerAddress, new { @class = "form-control", @readonly = "true", @row = 3, @style = "resize: none" })
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <br />
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h4>Order Details</h4>
+                                    <div class="form-horizontal">
+                                        <div class="table-responsive">
+                                            <table class="table TableList table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>No</th>
+                                                        <th>Product Category</th>
+                                                        <th>Product Name</th>
+                                                        <th>Quantity</th>
+                                                        <th>Total Cost</th>
+                                                        <th>Courier Service</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @{ var counter = 0; }
+                                                    @foreach (var item in Model.OrderDetailList)
+                                                    {
+                                                        <tr>
+                                                            @{ counter += 1; }
+                                                            <td>@counter</td>
+                                                            <td>@Html.DisplayFor(x => item.CategoryName, new { @class = "form-control", @readonly = "true" })</td>
+                                                            <td>@Html.DisplayFor(x => item.ProductName, new { @class = "form-control", @readonly = "true" })</td>
+                                                            <td>@Html.DisplayFor(x => item.OrderQuantity, new { @class = "form-control", @readonly = "true" })</td>
+                                                            <td>@Html.DisplayFor(x => item.OrderTotalCost, new { @class = "form-control", @readonly = "true" })</td>
+                                                            <td>@Html.DisplayFor(x => item.ShipperCompanyName, new { @class = "form-control", @readonly = "true" })</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
