@@ -15,6 +15,33 @@ namespace Internal.Controllers
         private NorthwindEntities db = new NorthwindEntities();
 
 
+        private string decrypt(string encrypted)
+        {
+            byte[] data = Convert.FromBase64String(encrypted);
+            return Encoding.UTF8.GetString(data);
+        }
+
+        [HttpGet]
+        public JsonResult GetCustomerDetails(string data)
+        {
+            string id = decrypt(data);
+            Customers ThisCustomer = db.Customers.Where(x => x.CustomerID == id).FirstOrDefault();
+
+            var address = "";
+            address += (string.IsNullOrWhiteSpace(ThisCustomer.Address) ? "" : ThisCustomer.Address);
+            address += (string.IsNullOrWhiteSpace(ThisCustomer.PostalCode) ? "" : ", " + ThisCustomer.PostalCode);
+            address += (string.IsNullOrWhiteSpace(ThisCustomer.City) ? "" : ", " + ThisCustomer.City);
+            address += (string.IsNullOrWhiteSpace(ThisCustomer.Region) ? "" : ", " + ThisCustomer.Region);
+
+            return Json(new
+                {
+                    Address = address,
+                    Contact = ThisCustomer.Phone
+                },
+                JsonRequestBehavior.AllowGet
+            );
+        }
+
         private IReadOnlyCollection<OrderDetailsModel> MapOrderDetails()
         {
             return (from m in db.OrderDetails.AsEnumerable() select new OrderDetailsModel()
