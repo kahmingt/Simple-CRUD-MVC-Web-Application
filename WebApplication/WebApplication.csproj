@@ -180,9 +180,6 @@
     <Compile Include="Database\Suppliers.cs">
       <DependentUpon>Model.tt</DependentUpon>
     </Compile>
-    <Compile Include="Database\sysdiagrams.cs">
-      <DependentUpon>Model.tt</DependentUpon>
-    </Compile>
     <Compile Include="Database\Territories.cs">
       <DependentUpon>Model.tt</DependentUpon>
     </Compile>

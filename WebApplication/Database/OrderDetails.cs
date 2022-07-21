@@ -14,6 +14,7 @@ namespace Internal.Database
     
     public partial class OrderDetails
     {
+        public int OrderDetailsID { get; set; }
         public int OrderID { get; set; }
         public int ProductID { get; set; }
         public decimal UnitPrice { get; set; }
