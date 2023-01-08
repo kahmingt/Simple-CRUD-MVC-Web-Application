@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Internal.Database
+namespace WebApplication.Database
 {
     using System;
     using System.Collections.Generic;

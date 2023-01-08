@@ -7,14 +7,13 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Internal.Database
+namespace WebApplication.Database
 {
     using System;
     using System.Collections.Generic;
     
     public partial class OrderDetails
     {
-        public int OrderDetailsID { get; set; }
         public int OrderID { get; set; }
         public int ProductID { get; set; }
         public decimal UnitPrice { get; set; }

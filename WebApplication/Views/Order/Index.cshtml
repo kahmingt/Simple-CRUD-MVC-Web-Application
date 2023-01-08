@@ -1,4 +1,4 @@
-﻿@model PagedList.IPagedList<Internal.Models.OrderViewPageModel>
+﻿@model PagedList.IPagedList<WebApplication.Models.OrderIndexListModel>
 @using PagedList.Mvc;
 <link href="/Content/PagedList.css" rel="stylesheet" type="text/css" />
 @{
@@ -34,39 +34,23 @@
                                             <th></th>
                                             <th>Order Date</th>
                                             <th>Customer Name</th>
-                                            <th>Product Category</th>
                                             <th>Total Cost</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in Model)
+                                        @if (Model != null)
                                         {
-                                            <tr>
-                                                <td>
-                                                    <a class="btn btn-primary" href="@Url.Action("Details", new { Mode = "View", OrderID = item.OrderID })"><span class="glyphicon glyphicon-eye-open"></span></a>
-                                                    <a class="btn btn-danger" data-target="#Modal" data-toggle="modal" href=""><span class="glyphicon glyphicon-trash"></span></a>
-                                                    <div class="fade modal" id="Modal" role="dialog">
-                                                        <div class="modal-dialog text-left">
-                                                            <div class="modal-content">
-                                                                <div class="modal-header">
-                                                                    <h4 class="Title">Delete</h4>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    Permanently delete this record?
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <a class="btn btn-danger" href="@Url.Action("Delete", new { OrderID = Request["OrderID"] })"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Yes</a>
-                                                                    <button class="btn btn-primary" data-dismiss="modal" type="button"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;No</button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>@item.OrderDate.ToString("yyyy-MM-dd")</td>
-                                                <td>@item.CustomerName</td>
-                                                <td>@item.CategoryName</td>
-                                                <td>@item.TotalCost.ToString("n2")</td>
-                                            </tr>
+                                            foreach (var item in Model)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <a class="btn btn-primary" href="@Url.Action("Details", new { OrderID = item.OrderID })"><span class="glyphicon glyphicon-eye-open"></span></a>
+                                                    </td>
+                                                    <td>@item.OrderDate.ToString("dd-MM-yyyy")</td>
+                                                    <td>@item.CustomerName</td>
+                                                    <td>@item.TotalCost.ToString("n2")</td>
+                                                </tr>
+                                            }
                                         }
                                     </tbody>
                                 </table>
@@ -84,8 +68,8 @@
                                     Showing @entryBegin to @entryEnd of @Model.TotalItemCount entries
                                 </div>
                                 <div style="text-align: right; display: inline-block;">
-                                    @Html.PagedListPager(Model, page => Url.Action("Index", new 
-                                    { 
+                                    @Html.PagedListPager(Model, page => Url.Action("Index", new
+                                    {
                                         page,
                                         Search = ViewBag.CurrentSort,
                                         Sort = ViewBag.CurrentFilter

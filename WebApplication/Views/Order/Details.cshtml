@@ -1,4 +1,4 @@
-﻿@model Internal.Models.OrderDetailPageModel
+﻿@model WebApplication.Models.NestedOrderModel
 @{
     if (Request["OrderID"] == null)
     {
@@ -9,170 +9,371 @@
         ViewBag.Title = "Order Summary for " + Request["OrderID"];
     }
 }
-@using (Html.BeginForm("Details", "Order", new { Mode = Request["Mode"], OrderID = Request["OrderID"] }, FormMethod.Post, new { enctype = "multipart/form-data" }))
-{
-    @Html.AntiForgeryToken()
-    <div class="container">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-body">
-                        @Html.Partial("Alert")
-                        <h3 class="Title">@ViewBag.Title</h3>
-                        <hr />
-                        @if (Request["Mode"] == "Edit")
-                        {
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <br />
-                                    <h4>Order Info</h4>
-                                    <div class="form-horizontal">
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Order Date</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.OrderDate, "{0:yyyy-MM-dd}", new { @class = "form-control datepicker", @type = "date", @readonly = "true" })
-                                                @Html.ValidationMessageFor(x => x.OrderDate, "", new { @class = "text-danger" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Handled by</label>
-                                            <div class="col-sm-8">
-                                                @Html.DropDownListFor(x => x.EmployeeID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_EmployeeName, "-- Select Employee Name --", new { @class = "form-control" })
-                                                @Html.ValidationMessageFor(x => x.EmployeeID, "", new { @class = "text-danger" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Grand Total</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.OrderGrandTotal, "{0:n2}", new { @class = "form-control", @readonly = "true" })
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <br />
-                                    <h4>Customer Details</h4>
-                                    <div class="form-horizontal">
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Recipient Name</label>
-                                            <div class="col-sm-8">
-                                                @Html.DropDownListFor(x => x.CustomerID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_CustomerName, "-- Select Customer Name --", new { @class = "form-control" })
-                                                @Html.ValidationMessageFor(x => x.CustomerID, "", new { @class = "text-danger" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Contact Number</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.CustomerContactNumber, new { @class = "form-control", @readonly = "true" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Delivery Address</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextAreaFor(x => x.CustomerAddress, new { @class = "form-control", @readonly = "true", @rows = 3, @style = "resize: none" })
-                                            </div>
-                                        </div>
-                                    </div>
+
+<div class="container">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            @Html.Partial("Alert")
+
+            @if (Request["Mode"] == "EditOrder")
+            {
+                using (Html.BeginForm("Details", "Order", new { Mode = "EditOrder", OrderID = Request["OrderID"] }, FormMethod.Post, new { enctype = "multipart/form-data" }))
+                {
+                    @Html.AntiForgeryToken()
+                    <div class="row">
+                        <div class="form-group">
+                            <div class="col-md-12">
+                                @Html.HiddenFor(x => x.OrderModel.OrderID, new { @id = "OrderID", @Value = Request["OrderID"] })
+                                <h3 class="Title" style="display:inline-block;">@ViewBag.Title</h3>
+                                <div style="float:right; position:relative; top:15px;">
+                                    @if (Request["OrderID"] != null)
+                                    {
+                                        <button class="btn btn-sm btn-primary" type="submit" name="button" id="ButtonSaveOrder" title="Save Order Report">
+                                            <span class="glyphicon glyphicon-save"></span>&nbsp;&nbsp;Save&nbsp;&nbsp;
+                                        </button>
+
+                                        <a href="@Url.Action("Details", new { OrderID = Request["OrderID"] })" class="btn btn-sm btn-primary" value="ButtonCancel" id="ButtonCancel" title="Cancel">
+                                            <span class="glyphicon glyphicon-arrow-left"></span>&nbsp;&nbsp;Cancel&nbsp;&nbsp;
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-primary" type="submit" name="button" id="ButtonSaveOrder" title="Create">
+                                            <span class="glyphicon glyphicon-save"></span>&nbsp;&nbsp;Create&nbsp;&nbsp;
+                                        </button>
+
+                                        <a href="@Url.Action("Index", "Order")" class="btn btn-sm btn-primary" id="ButtonEditOrder" title="Cancel">
+                                            <span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;Cancel&nbsp;&nbsp;
+                                        </a>
+                                    }
                                 </div>
                             </div>
-                        }
-                        @if (Request["Mode"] == "View")
-                        {
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <br />
-                                    <h4>Order Info</h4>
-                                    <div class="form-horizontal">
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Order Date</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => Model.OrderDate, "{0:yyyy-MM-dd}", new { @class = "form-control", @readonly = "true", @type = "date" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Handled by</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.EmployeeName, new { @class = "form-control", @readonly = "true" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Grand Total</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.OrderGrandTotal, "{0:n2}", new { @class = "form-control", @readonly = "true" })
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <br />
-                                    <h4>Customer Details</h4>
-                                    <div class="form-horizontal">
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Recipient Name</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.CustomerName, new { @class = "form-control", @readonly = "true" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Contact Number</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextBoxFor(x => x.CustomerContactNumber, new { @class = "form-control", @readonly = "true" })
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="col-sm-4 control-label Field">Delivery Address</label>
-                                            <div class="col-sm-8">
-                                                @Html.TextAreaFor(x => x.CustomerAddress, new { @class = "form-control", @readonly = "true", @row = 3, @style = "resize: none" })
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        </div>
+                    </div>
+                    <hr />
+                    <div class="row">
+                        <div class="col-md-6">
                             <br />
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <h4>Order Details</h4>
-                                    <div class="form-horizontal">
-                                        <div class="table-responsive">
-                                            <table class="table TableList table-hover">
-                                                <thead>
-                                                    <tr>
-                                                        <th>No</th>
-                                                        <th>Product Category</th>
-                                                        <th>Product Name</th>
-                                                        <th>Quantity</th>
-                                                        <th>Total Cost</th>
-                                                        <th>Courier Service</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @{ var counter = 0; }
-                                                    @foreach (var item in Model.OrderDetailList)
-                                                    {
-                                                        <tr>
-                                                            @{ counter += 1; }
-                                                            <td>@counter</td>
-                                                            <td>@Html.DisplayFor(x => item.CategoryName, new { @class = "form-control", @readonly = "true" })</td>
-                                                            <td>@Html.DisplayFor(x => item.ProductName, new { @class = "form-control", @readonly = "true" })</td>
-                                                            <td>@Html.DisplayFor(x => item.OrderQuantity, new { @class = "form-control", @readonly = "true" })</td>
-                                                            <td>@Html.DisplayFor(x => item.OrderTotalCost, new { @class = "form-control", @readonly = "true" })</td>
-                                                            <td>@Html.DisplayFor(x => item.ShipperCompanyName, new { @class = "form-control", @readonly = "true" })</td>
-                                                        </tr>
-                                                    }
-                                                </tbody>
-                                            </table>
+                            <h4>Order Info</h4>
+                            <div class="form-horizontal">
+                                <div class="form-group">
+                                    <label class="control-label col-md-4 Field">Order Date</label>
+                                    <div class="controls col-md-6">
+                                        @Html.TextBoxFor(x => x.OrderModel.OrderDate, "{0:yyyy-MM-dd}", new { @class = "form-control datepicker", @id = "OrderDate", @type = "date" })
+                                        @Html.ValidationMessageFor(x => x.OrderModel.OrderDate, "", new { @class = "text-danger" })
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="control-label col-md-4 Field">Handled by</label>
+                                    <div class="controls col-md-6">
+                                        @Html.DropDownListFor(x => x.OrderModel.EmployeeID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_EmployeeName, "-- Select Employee Name --", new { @class = "form-control", @id = "EmployeeID" })
+                                        @Html.ValidationMessageFor(x => x.OrderModel.EmployeeID, "", new { @class = "text-danger" })
+                                        @Html.HiddenFor(x => x.OrderModel.EmployeeName, new { @id = "EmployeeName" })
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="control-label col-md-4 Field">Grand Total</label>
+                                    <div class="controls col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-addon">$</span>
+                                            @Html.TextBoxFor(x => x.OrderModel.OrderGrandTotal, "{0:n2}", new { @class = "form-control", @id = "OrderGrandTotal", @readonly = "true" })
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="col-md-6">
+                            <br />
+                            <h4>Customer Details</h4>
+                            <div class="form-horizontal">
+                                <div class="form-group">
+                                    <label class="col-md-4 control-label Field">Recipient Name</label>
+                                    <div class="controls col-md-8">
+                                        @Html.DropDownListFor(x => x.OrderModel.CustomerID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_CustomerName, "-- Select Customer Name --", new { @class = "form-control", @id = "CustomerID" })
+                                        @Html.ValidationMessageFor(x => x.OrderModel.CustomerID, "", new { @class = "text-danger" })
+                                        @Html.HiddenFor(x => x.OrderModel.CustomerName, new { @id = "CustomerName" })
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-md-4 control-label Field">Contact Number</label>
+                                    <div class="controls col-md-8">
+                                        @Html.TextBoxFor(x => x.OrderModel.CustomerContactNumber, new { @class = "form-control", @id = "CustomerContactNumber", @readonly = "true" })
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="col-md-4 control-label Field">Delivery Address</label>
+                                    <div class="controls col-md-8">
+                                        @Html.TextAreaFor(x => x.OrderModel.CustomerAddress, new { @class = "form-control", @id = "CustomerAddress", @readonly = "true", @rows = 3, @style = "resize: none" })
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="row">
+                    <div class="form-group">
+                        <div class="col-md-12">
+                            @Html.HiddenFor(x => x.OrderModel.OrderID, new { @id = "OrderID", @Value = Request["OrderID"] })
+                            <h3 class="Title" style="display:inline-block;">@ViewBag.Title</h3>
+
+                            <div class="btn-group-sm" style="float:right; position:relative; top:15px;">
+                                <a href="@Url.Action("Details", "Order", new { Mode = "EditOrder", OrderID = Request["OrderID"] })" class="btn btn-sm btn-primary" id="ButtonEditOrdert" title="Edit Order Report">
+                                    <span class="glyphicon glyphicon-pencil"></span>&nbsp;&nbsp;Edit&nbsp;&nbsp;
+                                </a>
+
+                                <a class="btn btn-danger" data-target="#ModalOrderDelete" data-toggle="modal" href="" title="Delete">
+                                    <span class="glyphicon glyphicon-trash"></span>&nbsp;&nbsp;Delete&nbsp;&nbsp;
+                                </a>
+<!--
+TODO:
+Able to return to index page at last view pagination?
+-->
+
+                                <a href="@Url.Action("Index", "Order")" class="btn btn-sm btn-primary" value="ButtonBack" id="ButtonBack" title="Back">
+                                    <span class="glyphicon glyphicon-arrow-left"></span>&nbsp;&nbsp;Back&nbsp;&nbsp;
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="row">
+                    <div class="col-md-6">
+                        <br />
+                        <h4>Order Info</h4>
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label class="control-label col-md-4 Field">Order Date</label>
+                                <div class="col-md-6">
+                                    @Html.TextBoxFor(x => x.OrderModel.OrderDate, "{0:yyyy-MM-dd}", new { @class = "form-control", @id = "OrderDate", @readonly = "true", @type = "date" })
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-md-4 Field">Handled by</label>
+                                <div class="col-md-6">
+                                    @Html.TextBoxFor(x => x.OrderModel.EmployeeName, new { @class = "form-control", @id = "EmployeeName", @readonly = "true" })
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-md-4 Field">Grand Total</label>
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <span class="input-group-addon">$</span>
+                                        @Html.TextBoxFor(x => x.OrderModel.OrderGrandTotal, "{0:n2}", new { @class = "form-control", @id = "OrderGrandTotal", @readonly = "true" })
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <br />
+                        <h4>Customer Details</h4>
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label Field">Recipient Name</label>
+                                <div class="controls col-md-8">
+                                    @Html.TextBoxFor(x => x.OrderModel.CustomerName, new { @class = "form-control", @id = "CustomerName", @readonly = "true" })
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label Field">Contact Number</label>
+                                <div class="controls col-md-8">
+                                    @Html.TextBoxFor(x => x.OrderModel.CustomerContactNumber, new { @class = "form-control", @id = "CustomerContactNumber", @readonly = "true" })
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label Field">Delivery Address</label>
+                                <div class="controls col-md-8">
+                                    @Html.TextAreaFor(x => x.OrderModel.CustomerAddress, new { @class = "form-control", @id = "CustomerAddress", @readonly = "true", @row = 3, @style = "resize: none" })
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+
+            <br />
+            <hr />
+
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div>
+                        <h4 class="Title" style="display: inline-block">Order Details</h4>
+                        @if (string.IsNullOrWhiteSpace(Request["Mode"]))
+                        {
+                            <a class="btn btn-sm btn-primary" style="position:relative; top:-5px;" id="ButtonAddOrderDetailsRow" title="Click to add new order detail">
+                                <span class="glyphicon glyphicon-plus"></span>&nbsp;&nbsp;New Order Detail&nbsp;&nbsp;
+                            </a>
                         }
                     </div>
                 </div>
             </div>
+            <br />
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-horizontal">
+                        <div class="table-responsive">
+                            <table class="table TableList table-hover" id="TableOrderDetails">
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 200px;">Product Category</th>
+                                        <th style="min-width: 300px;">Product Name</th>
+                                        <th style="width: 120px;">Quantity</th>
+                                        <th style="width: 120px;">Unit Price</th>
+                                        <th style="width: 120px;">Total Cost</th>
+                                        <th style="min-width: 100px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Request["OrderID"] == null)
+                                    {
+                                        <tr><td colspan="6"><font style="font-size:1.35em; color:red;">New Order entry have to be created first, before creating new Order Details.</font></td></tr>
+                                    }
+                                    else
+                                    {
+                                        if (Model.OrderModel.OrderDetailList != null)
+                                        {
+                                            foreach (var item in Model.OrderModel.OrderDetailList)
+                                            {
+                                                <tr>
+                                                    @Html.HiddenFor(x => item.OrderID, new { @id = "OrderID" })
+                                                    @Html.HiddenFor(x => item.CategoryID, new { @id = "CategoryID" })
+                                                    @Html.HiddenFor(x => item.ProductID, new { @id = "ProductID" })
+
+                                                    <td id="CategoryName">@Html.DisplayFor(x => item.CategoryName, new { @class = "form-control" })</td>
+                                                    <td id="ProductName">@Html.DisplayFor(x => item.ProductName, new { @class = "form-control" })</td>
+                                                    <td id="OrderQuantity">@Html.DisplayFor(x => item.OrderQuantity, new { @class = "form-control" })</td>
+                                                    <td id="ProductUnitPrice">$@Html.DisplayFor(x => item.ProductUnitPrice, new { @class = "form-control" })</td>
+                                                    <td id="OrderTotalCost">$@Html.DisplayFor(x => item.OrderTotalCost, "{0:n2}", new { @class = "form-control" })</td>
+
+                                                    <td>
+                                                        @if (string.IsNullOrWhiteSpace(Request["Mode"]))
+                                                        {
+                                                            <div class="btn-group-xs">
+                                                                <button class="btn btn-primary" type="submit" name="button" id="ButtonOrderDetailEdit" title="Edit"><span class="glyphicon glyphicon-pencil"></span></button>
+                                                                <a class="btn btn-danger" data-target="#ModalOrderDetailDelete" data-toggle="modal" id="ButtonOrderDetailDelete" title="Delete"><span class="glyphicon glyphicon-trash"></span></a>
+                                                            </div>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bootstrap Model - Order - Delete -->
+            <div class="modal fade" id="ModalOrderDelete" role="dialog" tabindex="-1">
+                <div class="modal-dialog text-left">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="Title">Delete</h4>
+                        </div>
+                        <div class="modal-body">
+                            Do you wish to permanently delete this Order?<br /><br />
+                        </div>
+                        <div class="modal-footer">
+                            <a class="btn btn-danger" href="@Url.Action("Delete", new { OrderID = Request["OrderID"], Button = "Order" })"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Yes</a>
+                            <button class="btn btn-primary" data-dismiss="modal" type="button"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;No&nbsp;&nbsp;</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bootstrap Model - OrderDetails - Delete -->
+            <div class="modal fade" id="ModalOrderDetailDelete" role="dialog" tabindex="-1">
+                <div class="modal-dialog text-left">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h4 class="Title">Delete</h4>
+                        </div>
+                        <div class="modal-body">
+                            Do you wish to permanently delete this Order Detail?<br /><br />
+                        </div>
+                        <div class="modal-footer">
+                            @*<a class="btn btn-danger" href="@Url.Action("Delete", new { OrderID = Request["OrderID"] })"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Yes</a>*@
+                            <button class="btn btn-primary" data-dismiss="modal" type="button"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;No&nbsp;&nbsp;</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bootstrap Model - OrderDetails - Edit -->
+            <div class="modal fade" id="ModalOrderDetailEdit" tabindex="-1">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+
+                        <div class="modal-header">
+                            <h4 class="Title">Edit Order Details Entry</h4>
+                        </div>
+                        <div class="modal-body">
+                        </div>
+                        <div class="modal-footer">
+                            @*<a class="btn btn-danger" href="@Url.Action("Delete", new { OrderID = Request["OrderID"] })"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Yes</a>*@
+                            <button class="btn btn-primary" data-dismiss="modal" type="button"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;Cancel</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
-}
-@section Scripts {
-    @Scripts.Render("~/bundles/jqueryval")
+</div>
+
+@section Scripts
+{
     <script type="text/javascript" src="@Url.Content("~/Scripts/Order.js")"></script>
 }
+
+
+@*
+
+    <button class="btn btn-primary" type="submit" name="button" id="ButtonEdit" title="Edit"><span class="glyphicon glyphicon-pencil"></span></button>
+    <a class="btn btn-danger" data-target="#ModalDelete" data-toggle="modal" href="" title="Delete"><span class="glyphicon glyphicon-trash"></span></a>
+    <div class="fade modal" id="ModalDelete" role="dialog">
+        <div class="modal-dialog text-left">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="Title">Delete</h4>
+                </div>
+                <div class="modal-body">
+                    Permanently delete this Order Detail?
+                </div>
+                <div class="modal-footer">
+                    <a class="btn btn-danger" href="@Url.Action("Delete", new { OrderID = Request["OrderID"] })"><span class="glyphicon glyphicon-ok"></span>&nbsp;&nbsp;Yes</a>
+                    <button class="btn btn-primary" data-dismiss="modal" type="button"><span class="glyphicon glyphicon-remove"></span>&nbsp;&nbsp;No</button>
+                </div>
+            </div>
+        </div>
+    </div>
+*@
+
+
+
+
+
+@*
+
+    Order
+        Create      DONE
+        Retrieve    DONE
+        Update      DONE
+        Delete      
+
+    OrderDetails
+        Create      
+        Retrieve    DONE
+        Update      
+        Delete      
+
+*@

@@ -1,0 +1,57 @@
+﻿@model WebApplication.Models.OrderDetailsModel
+
+
+@using (Html.BeginForm("New", "Order", new { Mode = "Edit", OrderID = Request["OrderID"] }, FormMethod.Post, new { @class = "needs-validation", @id = "FormOrderDetails", enctype = "multipart/form-data" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(x => x.OrderID, new { @class = "form-control", @id = "OrderID" })
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-horizontal">
+                <div class="form-group">
+                    <label class="control-label col-md-4 Field">Product Category</label>
+                    <div class="col-md-6">
+                        @Html.DropDownListFor(x => x.CategoryID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_CategoryName, "-- Select Category --", new { @class = "form-control", @id = "CategoryID", @required = "true" })
+                        @Html.ValidationMessageFor(x => x.CategoryID, "", new { @class = "text-danger" })
+                        @Html.HiddenFor(x => x.CategoryName, new { @class = "form-control", @id = "CategoryName" })
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4 Field">Product Name</label>
+                    <div class="col-md-6">
+                        @Html.DropDownListFor(x => x.ProductID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_ProductName, "-- Select Product --", new { @class = "form-control", @id = "ProductID", @required = "true" })
+                        @Html.ValidationMessageFor(x => x.ProductID, "", new { @class = "text-danger" })
+                        @Html.HiddenFor(x => x.ProductName, new { @class = "form-control", @id = "ProductName" })
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4 Field">Order Quantity</label>
+                    <div class="col-md-6">
+                        @Html.TextBoxFor(x => x.OrderQuantity, new { @class = "form-control", @type = "number", @id = "OrderQuantity" })
+                        @Html.ValidationMessageFor(x => x.OrderQuantity, "", new { @class = "text-danger" })
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4 Field">Unit Price</label>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-addon">$</span>
+                            @Html.TextBoxFor(x => x.ProductUnitPrice, "{0:n2}", new { @class = "form-control", @readonly = "true", @id = "ProductUnitPrice" })
+                            @Html.Hidden("ProductUnitsInStock")
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="control-label col-md-4 Field">Total Cost</label>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-addon">$</span>
+                            @Html.TextBoxFor(x => x.OrderTotalCost, "{0:n2}", new { @class = "form-control", @readonly = "true", @id = "OrderTotalCost" })
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
