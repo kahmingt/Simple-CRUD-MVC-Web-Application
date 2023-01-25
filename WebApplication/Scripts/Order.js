@@ -1,14 +1,10 @@
-﻿// https://stackoverflow.com/questions/3709597/wait-until-all-jquery-ajax-requests-are-done
-// https://stackoverflow.com/questions/19194177/jquery-select-change-not-firing
-// https://stackoverflow.com/questions/44963298/jqueryi-want-to-make-a-particular-table-row-readonly-based-on-column-td-value
-// https://stackoverflow.com/questions/7767593/jquery-passing-this-to-a-function
-// https://stackoverflow.com/questions/6658752/click-event-doesnt-work-on-dynamically-generated-elements
-// https://stackoverflow.com/questions/7858385/how-to-add-values-to-an-array-of-objects-dynamically-in-javascript
-
-
-$(document).ready(function () {
+﻿$(document).ready(function () {
 
     console.log("Welcome");
+    var ModalButtonClicked;
+    var ThisOrderIDValue = GetOrderIdFromModal($(this));
+    console.log("OrderId  > " + GetOrderIdFromModal($(this)));
+
 
     ///
     /// [Order]
@@ -27,73 +23,43 @@ $(document).ready(function () {
         $('#CustomerName').val($('#CustomerID :selected').text());
     });
 
+    /// Bootstrap modal
+    $(document).on("click", '#ButtonDelete_Orders', function () {
+        $('#FormDelete_Orders').attr('action', "/Order/Details?OrderID=" + ThisOrderIDValue + "&ProductID=&Mode=Edit");
+    });
+
+
 
     ///
     /// [OrderDetails]
     ///
 
-    /// Edit OrderDetails entry
-    $(document).on("click", "#ButtonOrderDetailEdit", function () {
-        console.log("on click #ButtonOrderDetailEdit");
-
-        var model = GetTableRowOrderDetailsInJson($(this));
-        return $.ajax({
-            type: "GET",
-            url: "/Order/_PartialView_OrderDetailsView",
-            contentType: "application/json; charset=UTF-8",
-            data: model,
-            dataType: "html",
-            cache: false,
-            success: function (response) {
-                console.log("[HTTPGet] _PartialView_OrderDetailsView success!");
-                $('#ModalOrderDetailEdit .modal-body').html(response);
-                $('#ModalOrderDetailEdit').modal('show');
-            },
-            error: function (xhr, status, thrownError) {
-                alert("Status code : " + xhr.status);
-                alert(thrownError);
-            }
-        });
-    });
-
-    /// Display bootstrap model OrderDetails edit entry
-    $('#ModalOrderDetailEdit').on("show.bs.modal", function (event) {
-        var OrderID = $('#ModalOrderDetailEdit #OrderID').val();
-        if (OrderID) {
-            console.log("Edit Old OrderDetails @OrderID=" + OrderID);
-            GetProductStockStatus($('#ModalOrderDetailEdit'));
-        }
-        else {
-            console.log("Unable to edit OrderDetails without valid OrderID ??????");
-            event.preventDefault();
-        }
-    });
-
-    /// Get filtered product list based on Product Category
+    /// Get filtered product based on category
     $(document).on("change", '#CategoryID', function () {
-        $('#ModalOrderDetailEdit #CategoryName').val($('#ModalOrderDetailEdit #CategoryID').children(':selected').text());
-        GetProductList($('#ModalOrderDetailEdit'));
+        $('#Modal_OrderDetails #CategoryName').val($('#Modal_OrderDetails #CategoryID').children(':selected').text());
+        GetProductList($('#Modal_OrderDetails'));
+
+        // Reset and update
+        $('#Modal_OrderDetails').find("#OrderQuantity").val("0");
+        $('#Modal_OrderDetails').find("#ProductUnitPrice").val("");
+        UpdateOrderTotalCost($('#Modal_OrderDetails'));
     });
 
     /// Compute & update order total cost
     $(document).on("change", '#ProductID', function () {
-
-        $.when(GetProductStockStatus($('#ModalOrderDetailEdit'))).done(function () {
-            $('#ModalOrderDetailEdit #ProductName').val($('#ModalOrderDetailEdit #ProductID').children(':selected').text());
-
-            // Update MaxOrderQuantity & TotalCost
-            //UpdateOrderQuantityAttribute($('#ModalOrderDetailEdit'));
-            UpdateOrderTotalCost($('#ModalOrderDetailEdit'));
-
-            //console.log("{change} #ProductID >> UpdateOrderGrandTotal()")
-            //UpdateOrderGrandTotal();
+        $.when(GetProductStockStatus($('#Modal_OrderDetails'))).done(function () {
+            $('#Modal_OrderDetails #ProductName').val($('#Modal_OrderDetails #ProductID').children(':selected').text());
         });
+
+        // Reset and update
+        $('#Modal_OrderDetails').find("#OrderQuantity").val("1");
+        $('#Modal_OrderDetails').find("#OrderQuantity").prop('disabled', false);
     });
 
     /// Validate #OrderQuantity input
     $(document).on("input keyup keydown mouseup mousedown select contextmenu paste drop focusout", '#OrderQuantity', function (event) {
         var OrderQuantity = $(this).val();
-        var MaxOrderQuantity = $('#ModalOrderDetailEdit #ProductUnitsInStock').val();
+        var MaxOrderQuantity = $('#Modal_OrderDetails #ProductUnitsInStock').val();
     
         if (["keydown", "mousedown", "focusout"].indexOf(event.type) >= 0) {
             $(this).removeClass("have-error");
@@ -145,16 +111,93 @@ $(document).ready(function () {
     
         if (parseInt(OrderQuantity) > parseInt(MaxOrderQuantity)) {
             event.preventDefault();
-            $('#ModalOrderDetailEdit #OrderQuantity').val(MaxOrderQuantity);
+            $('#Modal_OrderDetails #OrderQuantity').val(MaxOrderQuantity);
             this.setCustomValidity("Maximum order quantity is " + MaxOrderQuantity + ".");
             this.reportValidity();
         }
 
         if (!$(this).hasClass(("have-error"))) {
-            UpdateOrderTotalCost($('#ModalOrderDetailEdit'));
+            UpdateOrderTotalCost($('#Modal_OrderDetails'));
         }
     });
 
+    /// Bootstrap modal
+    $(document).on("click", '#ButtonAdd_OrderDetails', function () {
+        ModalButtonClicked = "ButtonAdd_OrderDetails";
+        $.ajax({
+            type: "GET",
+            url: "/Order/PartialViewOrderDetails",
+            contentType: "application/json; charset=UTF-8",
+            data: { OrderID: ThisOrderIDValue },
+            dataType: "html",
+            cache: false,
+            success: function (response) {
+                console.log("[HTTPGet] PartialViewOrderDetails success!");
+                $('#Modal_OrderDetails .modal-body').html(response);
+                GetCategoryList($('#Modal_OrderDetails'));
+            },
+            error: function (xhr, status, thrownError) {
+                alert("Status code : " + xhr.status);
+                alert(thrownError);
+            }
+        });
+
+        $('#Modal_OrderDetails .modal-header h4').text("Add New Order Details Entry");
+        $('#Modal_OrderDetails #ModalButtonSubmit_OrderDetails').attr("value", "CreateOrderDetails");
+        $('#Modal_OrderDetails #ModalButtonSubmit_OrderDetails').attr("title", "Create Order Details");
+        $('#Modal_OrderDetails').modal('show');
+    });
+
+    $(document).on("click", '#ButtonEdit_OrderDetails', function () {
+        ModalButtonClicked = "ButtonEdit_OrderDetails";
+        $.ajax({
+            type: "GET",
+            url: "/Order/PartialViewOrderDetails",
+            contentType: "application/json; charset=UTF-8",
+            data: GetTableRowOrderDetailsInJson($(this)),
+            dataType: "html",
+            cache: false,
+            success: function (response) {
+                console.log("[HTTPGet] PartialViewOrderDetails success!");
+                $('#Modal_OrderDetails .modal-body').html(response);
+                GetProductList($('#Modal_OrderDetails'));
+                GetProductStockStatus($('#Modal_OrderDetails'));
+                UpdateOrderTotalCost($('#Modal_OrderDetails'));
+            },
+            error: function (xhr, status, thrownError) {
+                alert("Status code : " + xhr.status);
+                alert(thrownError);
+            }
+        });
+
+        $('#Modal_OrderDetails .modal-header h4').text("Edit Order Details Entry");
+        $('#Modal_OrderDetails #ModalButtonSubmit_OrderDetails').attr("value", "UpdateOrderDetails");
+        $('#Modal_OrderDetails #ModalButtonSubmit_OrderDetails').attr("title", "Update Order Details");
+        $('#Modal_OrderDetails').modal('show');
+    });
+
+    $(document).on("click", '#ButtonDelete_OrderDetails', function () {
+        var ThisRowData = GetTableRowOrderDetailsInJson($(this));
+        $('#FormDelete_OrderDetails').attr('action', "/Order/Details?OrderID=" + ThisRowData["OrderID"] + "&ProductID=" + ThisRowData["ProductID"] + "&Mode=Edit");
+    });
+
+    $(document).on("click", '#ModalButtonSubmit_OrderDetails', function () {
+        console.log("ModalButtonClicked: " + ModalButtonClicked);
+        var ThisProductIdValue = GetProductIdFromModal($('#Modal_OrderDetails'));
+        $('#FormAddEdit_OrderDetails').attr("action", "/Order/Details?OrderID=" + ThisOrderIDValue + "&ProductID=" + ThisProductIdValue + "&Mode=Edit");
+    });
+
+    $('#Modal_OrderDetails').on('shown.bs.modal', function ()
+    {
+        if (ModalButtonClicked == "ButtonAdd_OrderDetails")
+        {
+            $('#Modal_OrderDetails').find('#CategoryID>option:eq()').prop('selected', true);
+            $('#Modal_OrderDetails').find('#ProductID').prop('disabled', true);
+            $('#Modal_OrderDetails').find("#OrderQuantity").prop('disabled', true);
+            $('#Modal_OrderDetails').find("#OrderQuantity").val("1");
+            UpdateOrderTotalCost($('#Modal_OrderDetails'));
+        }
+    })
 
 });
 
@@ -195,8 +238,8 @@ function GetCustomerDetails() {
 ///
 /// [OrderDetails] Sub-functions Get & Update
 ///
-function GetCategoryList(ThisObject) {
-    var DOMCategoryID = ThisObject.find('#CategoryID');
+function GetCategoryList(ThisElement) {
+    var DOMCategoryID = ThisElement.find('#CategoryID');
     return $.ajax({
         type: "GET",
         url: "/Order/GetCategoryList/",
@@ -219,12 +262,22 @@ function GetCategoryList(ThisObject) {
     });
 }
 
-function GetProductList(ThisObject) {
-    var DOMProductID = ThisObject.find('#ProductID')
-    var CategoryIdSelected = ThisObject.find('#CategoryID').children(':selected').val();
+function GetOrderIdFromModal(ThisElement) {
+    return ThisElement.find('#OrderID').val();
+}
+
+function GetProductIdFromModal(ThisElement) {
+    return ThisElement.find('#ProductID').children(':selected').val();
+}
+
+function GetProductList(ThisElement) {
+    var DOMProductID = ThisElement.find('#ProductID');
+    var CategoryIdSelected = ThisElement.find('#CategoryID').children(':selected').val();
+    var ProductIdSelected = $('#Modal_OrderDetails').find('#ProductID').children(':selected').val();
+    console.log("ProductIdSelected: " + ProductIdSelected);
 
     if ($.isNumeric(CategoryIdSelected)) {
-        ThisObject.find('#ProductID').prop('disabled', false);
+        ThisElement.find('#ProductID').prop('disabled', false);
     
         $.ajax({
             type: "GET",
@@ -240,6 +293,12 @@ function GetProductList(ThisObject) {
                 for (var i in json) {
                     DOMProductID.append('<option value="' + json[i].Value + '">' + json[i].Text + '</option>');
                 }
+
+                // Reselect ProductId
+                if ($.isNumeric(ProductIdSelected))
+                {
+                    ThisElement.find('#ProductID > option[value=' + ProductIdSelected + ']').attr('selected', 'selected');
+                }
             },
             error: function (xhr, status, thrownError) {
                 alert("Status code : " + xhr.status);
@@ -249,13 +308,13 @@ function GetProductList(ThisObject) {
     }
     else {
         // Reset
-        ThisObject.find('#ProductID>option:eq()').prop('selected', true);
-        ThisObject.find('#ProductID').prop('disabled', true);
+        ThisElement.find('#ProductID>option:eq()').prop('selected', true);
+        ThisElement.find('#ProductID').prop('disabled', true);
     }
 }
 
-function GetProductStockStatus(ThisObject) {
-    var ProductIdSelected = ThisObject.find('#ProductID').children(':selected').val();
+function GetProductStockStatus(ThisElement) {
+    var ProductIdSelected = ThisElement.find('#ProductID').children(':selected').val();
 
     $.when(
         $.ajax({
@@ -267,8 +326,8 @@ function GetProductStockStatus(ThisObject) {
                 success: function (json) {
                     console.log("[HttpGet] GetProductDetails successful!");
                     var Data = JSON.parse(json);
-                    ThisObject.find('#ProductUnitsInStock').val(Data["ProductUnitsInStock"]);
-                    ThisObject.find('#ProductUnitPrice').val(TwoDecimalPlaces(Data["ProductUnitPrice"]));
+                    ThisElement.find('#ProductUnitsInStock').val(Data["ProductUnitsInStock"]);
+                    ThisElement.find('#ProductUnitPrice').val(TwoDecimalPlaces(Data["ProductUnitPrice"]));
                 },
                 error: function (xhr, status, thrownError) {
                     alert(xhr.status);
@@ -276,14 +335,16 @@ function GetProductStockStatus(ThisObject) {
                 }
             })
     ).done(function () {
-        console.log("'" + ThisObject.find('#ProductName').val() + "' maximum purchase quantity is " + ThisObject.find('#ProductUnitsInStock').val());
-        ThisObject.find('#OrderQuantity').attr("max", ThisObject.find('#ProductUnitsInStock').val());
+        console.log("'" + ThisElement.find('#ProductName').val() + "' maximum purchase quantity is " + ThisElement.find('#ProductUnitsInStock').val());
+        //console.log("'" + ThisElement.find('#ProductName').val() + "' unit price is " + ThisElement.find('#ProductUnitPrice').val());
+        ThisElement.find('#OrderQuantity').attr("max", ThisElement.find('#ProductUnitsInStock').val());
+        UpdateOrderTotalCost(ThisElement);
     });
 }
 
-function GetTableRowOrderDetailsInJson(ThisObject) {
+function GetTableRowOrderDetailsInJson(ThisElement) {
     var ModelObject = {};
-    ThisObject.closest("tr").each(function () {
+    ThisElement.closest("tr").each(function () {
         if ($(":input")) {
             $('input', this).each(function () {
                 if ($(this).val()) {
@@ -293,7 +354,7 @@ function GetTableRowOrderDetailsInJson(ThisObject) {
             });
         }
     });
-    ThisObject.closest("tr").find("td").each(function () {
+    ThisElement.closest("tr").find("td").each(function () {
         if ($(this).attr("id")) {
             //console.log($(this).attr("id") + "=" + $(this).html().replace("$", ""));
             ModelObject[$(this).attr("id")] = $(this).html().replace("$", "");
@@ -302,29 +363,27 @@ function GetTableRowOrderDetailsInJson(ThisObject) {
     return ModelObject
 }
 
-function IsAlphabet(string) {
-    return string.length >= 1 && string.match(/[a-zA-Z]/);
+function IsAlphabet(String) {
+    return String.length >= 1 && String.match(/[a-zA-Z]/);
 }
 
-function TwoDecimalPlaces(number, symbol) {
-    if (!$.isNumeric(number)) return;
-    number = parseFloat(number).toFixed(2);
-    var n = number.split('').reverse().join("");
+function TwoDecimalPlaces(Number, Symbol) {
+    if (!$.isNumeric(Number)) return;
+    Number = parseFloat(Number).toFixed(2);
+    var n = Number.split('').reverse().join("");
     var n2 = n.replace(/\d\d\d(?!$)/g, "$&,");
     var res = n2.split('').reverse().join('');
-    res = (symbol == null) ? (number) : (number = symbol + number);
+    res = (Symbol == null) ? (Number) : (Number = Symbol + Number);
     return res;
 }
 
-function UpdateOrderTotalCost(ThisObject) {
-    var OrderQuantity = parseInt(ThisObject.find('#OrderQuantity').val());
-    var ProductUnitPrice = parseFloat(ThisObject.find('#ProductUnitPrice').val());
+function UpdateOrderTotalCost(ThisElement) {
+    var OrderQuantity = parseInt(ThisElement.find('#OrderQuantity').val());
+    var ProductUnitPrice = parseFloat(ThisElement.find('#ProductUnitPrice').val());
     var TotalCost = OrderQuantity * ProductUnitPrice;
 
     //console.log("OrderQuantity: " + OrderQuantity);
-    //console.log("ProductDiscount: " + ProductDiscount);
     //console.log("ProductUnitPrice: " + ProductUnitPrice);
     //console.log("TotalCost: " + TotalCost);
-    ThisObject.find("#OrderTotalCost").val(TwoDecimalPlaces(TotalCost))
+    ThisElement.find("#OrderTotalCost").val(TwoDecimalPlaces(TotalCost))
 }
-

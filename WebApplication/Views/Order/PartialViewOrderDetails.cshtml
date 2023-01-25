@@ -1,0 +1,67 @@
+﻿@model WebApplication.Models.NestedOrderModel
+
+
+@Html.HiddenFor(x => x.OrderDetailsModel.OrderID, new { @class = "form-control", @id = "OrderID", @Value = Request["OrderID"] })
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="form-horizontal">
+            <div class="form-group">
+                <label class="control-label col-md-4 Field">Product Category</label>
+                <div class="col-md-6">
+                    @if (Model.OrderDetailsModel.CategoryID == 0)
+                    {
+                        @Html.DropDownListFor(x => x.OrderDetailsModel.CategoryID, Enumerable.Empty<SelectListItem>(), "-- Select Category --", new { @class = "form-control", @id = "CategoryID", @required = "true" })
+                    }
+                    else
+                    {
+                        @Html.DropDownListFor(x => x.OrderDetailsModel.CategoryID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_CategoryName, "-- Select Category --", new { @class = "form-control", @id = "CategoryID", @required = "true" })
+                    }
+                    @Html.ValidationMessageFor(x => x.OrderDetailsModel.CategoryID, "", new { @class = "text-danger" })
+                    @Html.HiddenFor(x => x.OrderDetailsModel.CategoryName, new { @class = "form-control", @id = "CategoryName" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-4 Field">Product Name</label>
+                <div class="col-md-6">
+                    @if (Model.OrderDetailsModel.ProductID == 0)
+                    {
+                        @Html.DropDownListFor(x => x.OrderDetailsModel.ProductID, Enumerable.Empty<SelectListItem>(), "-- Select Product --", new { @class = "form-control", @id = "ProductID", @required = "true" })
+                    }
+                    else
+                    {
+                        @Html.DropDownListFor(x => x.OrderDetailsModel.ProductID, (IEnumerable<SelectListItem>)ViewBag.DropDownList_ProductName, "-- Select Product --", new { @class = "form-control", @id = "ProductID", @required = "true" })
+                    }
+                    @Html.ValidationMessageFor(x => x.OrderDetailsModel.ProductID, "", new { @class = "text-danger" })
+                    @Html.HiddenFor(x => x.OrderDetailsModel.ProductName, new { @class = "form-control", @id = "ProductName" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-4 Field">Order Quantity</label>
+                <div class="col-md-6">
+                    @Html.TextBoxFor(x => x.OrderDetailsModel.OrderQuantity, new { @class = "form-control", @type = "number", @id = "OrderQuantity", @required = "true" })
+                    @Html.ValidationMessageFor(x => x.OrderDetailsModel.OrderQuantity, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-4 Field">Unit Price</label>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-addon">$</span>
+                        @Html.TextBoxFor(x => x.OrderDetailsModel.ProductUnitPrice, "{0:n2}", new { @class = "form-control", @readonly = "true", @id = "ProductUnitPrice" })
+                        @Html.Hidden("ProductUnitsInStock")
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-md-4 Field">Total Cost</label>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-addon">$</span>
+                        @Html.TextBoxFor(x => x.OrderDetailsModel.OrderTotalCost, "{0:n2}", new { @class = "form-control", @readonly = "true", @id = "OrderTotalCost" })
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

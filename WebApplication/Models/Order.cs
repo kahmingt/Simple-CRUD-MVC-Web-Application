@@ -4,7 +4,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace WebApplication.Models
 {
-    ///  /Order/index
     public class OrderIndexListModel
     {
         public string CustomerName { get; set; }
@@ -64,12 +63,22 @@ namespace WebApplication.Models
         public decimal ProductUnitPrice { get; set; }
     }
 
-
     public class NestedOrderModel
     {
         public OrderModel OrderModel { get; set; }
 
         public OrderDetailsModel OrderDetailsModel { get; set; }
+    }
+
+
+
+
+    public enum AlertType { Danger, Info, Success, Warning }
+
+    public class Alerts
+    {
+        public string Type { get; set; }
+        public string Message { get; set; }
     }
 
 }

@@ -12,6 +12,7 @@ using System.Globalization;
 using System.Web.Mvc;
 using System.Reflection;
 using System.Net;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace WebApplication.Controllers
 {
@@ -30,23 +31,16 @@ namespace WebApplication.Controllers
             base.Dispose(disposing);
         }
 
-        private string decrypt(string encrypted)
+        private string Decrypt(string encrypted)
         {
             byte[] data = Convert.FromBase64String(encrypted);
             return Encoding.UTF8.GetString(data);
         }
 
         [HttpGet]
-        public JsonResult GetCategoryList()
-        {
-            List<SelectListItem> CategoryList = db.Categories.Select(x => new SelectListItem { Text = x.CategoryName, Value = x.CategoryID.ToString() }).ToList();
-            return Json(CategoryList, JsonRequestBehavior.AllowGet);
-        }
-
-        [HttpGet]
         public JsonResult GetCustomerDetails(string data)
         {
-            string id = decrypt(data);
+            string id = Decrypt(data);
             Customers ThisCustomer = db.Customers.Where(x => x.CustomerID == id).FirstOrDefault();
 
             var address = "";
@@ -65,74 +59,224 @@ namespace WebApplication.Controllers
         }
 
         [HttpGet]
+        public JsonResult GetCategoryList()
+        {
+            List<SelectListItem> CategoryList = db.Categories.Select(x => new SelectListItem
+            {
+                Text = x.CategoryName,
+                Value = x.CategoryID.ToString()
+            }).ToList();
+            return Json(CategoryList, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
+        public JsonResult GetProductList(string data)
+        {
+            int id = Convert.ToInt32(Decrypt(data));
+            List<SelectListItem> ProductList = db.Products.Where(x => x.CategoryID == id && x.UnitsInStock > 0).Select(x => new SelectListItem
+            {
+                Text = x.ProductName,
+                Value = x.ProductID.ToString()
+            }).ToList();
+            return Json(ProductList, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
         public JsonResult GetProductDetails(string data)
         {
-            int id = int.Parse(decrypt(data));
+            int id = int.Parse(Decrypt(data));
             Products ThisProduct = db.Products.Where(x => x.ProductID == id).FirstOrDefault();
-            OrderDetails ThisOrderDetail = db.OrderDetails.Where(x => x.ProductID == id).FirstOrDefault();
-
             return Json(new
                 {
                     ProductUnitsInStock = ThisProduct.UnitsInStock,
-                    ProductUnitPrice = ThisOrderDetail.UnitPrice,
+                    ProductUnitPrice = ThisProduct.UnitPrice,
                 },
                 JsonRequestBehavior.AllowGet
             );
         }
 
         [HttpGet]
-        public JsonResult GetProductList(string data)
+        public ActionResult PartialViewOrderDetails(OrderDetailsModel OrderDetailsModel)
         {
-            int id = Convert.ToInt32(decrypt(data));
-            List<SelectListItem> ProductList = db.Products.Where(x => x.CategoryID == id).Select(x => new SelectListItem { Text = x.ProductName, Value = x.ProductID.ToString() }).ToList();
-            return Json(ProductList, JsonRequestBehavior.AllowGet);
-        }
-
-
-        [HttpGet]
-        public ActionResult _PartialView_OrderDetailsView(OrderDetailsModel OrderDetailsModel)
-        {
+            var NestedOrderModel = new NestedOrderModel();
             ViewBag.DropDownList_CategoryName = db.Categories.OrderBy(x => x.CategoryID).Select(x => new SelectListItem
             {
                 Text = x.CategoryName,
                 Value = x.CategoryID.ToString()
             });
-            ViewBag.DropDownList_ProductName = db.Products.OrderBy(x => x.ProductID).Select(x => new SelectListItem
+
+            // Update
+            if (OrderDetailsModel.CategoryID != 0 && OrderDetailsModel.ProductID != 0)
             {
-                Text = x.ProductName,
-                Value = x.ProductID.ToString()
-            });
-            return PartialView(OrderDetailsModel);
+                ViewBag.DropDownList_ProductName = db.Products.OrderBy(x => x.ProductID).Select(x => new SelectListItem
+                {
+                    Text = x.ProductName,
+                    Value = x.ProductID.ToString()
+                });
+                NestedOrderModel = new NestedOrderModel
+                {
+                    OrderDetailsModel = new OrderDetailsModel
+                    {
+                        CategoryID = OrderDetailsModel.CategoryID,
+                        CategoryName = OrderDetailsModel.CategoryName,
+                        OrderID = OrderDetailsModel.OrderID,
+                        OrderQuantity = OrderDetailsModel.OrderQuantity,
+                        ProductID = OrderDetailsModel.ProductID,
+                        ProductName = OrderDetailsModel.ProductName,
+                        ProductUnitPrice = OrderDetailsModel.ProductUnitPrice
+                    },
+                };
+            }
+            else
+            {
+                NestedOrderModel = new NestedOrderModel
+                {
+                    OrderDetailsModel = new OrderDetailsModel
+                    {
+                        OrderID = OrderDetailsModel.OrderID
+                    },
+                };
+            
+            }
+
+            return PartialView(NestedOrderModel);
         }
 
 
         private IReadOnlyCollection<OrderDetailsModel> GetOrderDetailsList()
         {
             return (from m in db.OrderDetails.AsEnumerable()
-                    select new OrderDetailsModel() {
+                    select new OrderDetailsModel()
+                    {
                         CategoryID = m.Products.CategoryID.Value,
                         CategoryName = m.Products.Categories.CategoryName,
-                        OrderTotalCost = m.Quantity * m.UnitPrice,
+                        OrderTotalCost = m.Quantity * m.Products.UnitPrice.Value,
                         OrderID = m.OrderID,
                         OrderQuantity = m.Quantity,
                         ProductID = m.ProductID,
                         ProductName = m.Products.ProductName,
-                        ProductUnitPrice = m.UnitPrice,
+                        ProductUnitPrice = m.Products.UnitPrice.Value,
                     }).ToList();
         }
 
-        private NestedOrderModel RetrieveOrder(int OrderID)
+        private Orders CreateOrders(NestedOrderModel NestedOrderModel)
         {
-            var NestedOrderModel = new NestedOrderModel();
+            int NewOrderID = 0;
+            var mOrder = new Orders
+            {
+                OrderDate = NestedOrderModel.OrderModel.OrderDate,
+                EmployeeID = NestedOrderModel.OrderModel.EmployeeID,
+                CustomerID = NestedOrderModel.OrderModel.CustomerID
+            };
+            db.Orders.Add(mOrder);
+
+            try
+            {
+                db.SaveChanges();
+                NewOrderID = mOrder.OrderID;
+            }
+            catch (DbUpdateException exception)
+            {
+                Debug.WriteLine(exception.Message);
+                TriggerBootstrapAlerts(AlertType.Danger, "500 Internal Server Error. " + exception.Message + ".");
+            }
+
+            return db.Orders.Find(NewOrderID);
+        }
+
+        private OrderDetails CreateOrderDetails(NestedOrderModel NestedOrderModel)
+        {
+            var mOrderDetails = new OrderDetails
+            {
+                OrderID = NestedOrderModel.OrderDetailsModel.OrderID.Value,
+                ProductID = NestedOrderModel.OrderDetailsModel.ProductID,
+                Quantity = (short)NestedOrderModel.OrderDetailsModel.OrderQuantity
+            };
+            db.OrderDetails.Add(mOrderDetails);
+
+            try
+            {
+                db.SaveChanges();
+            }
+            catch (DbUpdateException exception)
+            {
+                Debug.WriteLine(exception.Message);
+                TriggerBootstrapAlerts(AlertType.Danger, "500 Internal Server Error. " + exception.Message + ".");
+            }
+
+            return mOrderDetails;
+        }
+
+        private bool DeleteOrders(int OrderID)
+        {
+            var mOrders = db.Orders.Where(x => x.OrderID == OrderID).FirstOrDefault();
+            IList<OrderDetails> mOrderDetails = (from x in db.OrderDetails where x.OrderID == OrderID select x).ToList();
+
+            if (mOrderDetails != null)
+            {
+                foreach (OrderDetails OrderDetailsList in mOrderDetails)
+                {
+                    DeleteOrderDetails(OrderID, OrderDetailsList.ProductID);
+                }
+                db.Orders.Remove(mOrders);
+
+                try
+                {
+                    db.SaveChanges();
+                }
+                catch (DbUpdateException exception)
+                {
+                    Debug.WriteLine(exception.Message);
+                    TriggerBootstrapAlerts(AlertType.Danger, "500 Internal Server Error. " + exception.Message + ".");
+                    return false;
+                }
+                return true;
+            }
+            else
+            {
+                TriggerBootstrapAlerts(AlertType.Danger, "Bad Request. ID not found.");
+            }
+            return false;
+        }
+
+        private bool DeleteOrderDetails(int OrderID, int ProductID)
+        {
+            var mOrderDetails = db.OrderDetails.FirstOrDefault(x => x.OrderID == OrderID && x.ProductID == ProductID);
+            if (mOrderDetails != null)
+            {
+                db.OrderDetails.Remove(mOrderDetails);
+
+                try
+                {
+                    db.SaveChanges();
+                }
+                catch (DbUpdateException exception)
+                {
+                    Debug.WriteLine(exception.Message);
+                    TriggerBootstrapAlerts(AlertType.Danger, "500 Internal Server Error. " + exception.Message + ".");
+                    return false;
+                }
+                return true;
+            }
+            else
+            {
+                TriggerBootstrapAlerts(AlertType.Danger, "Bad Request. ID not found.");
+            }
+
+            return false;
+        }
+
+        private NestedOrderModel RetrieveOrders(int OrderID)
+        {
+            var mNestedOrderModel = new NestedOrderModel();
             var mOrder = db.Orders.Find(OrderID);
             if (mOrder != null)
             {
-                var OrderDetailList = (from m in GetOrderDetailsList() where m.OrderID == OrderID select m);
-                NestedOrderModel = new NestedOrderModel()
+                var OrderDetailList = from x in GetOrderDetailsList() where x.OrderID == OrderID select x;
+                mNestedOrderModel = new NestedOrderModel()
                 {
                     OrderModel = new OrderModel()
                     {
-                        OrderDetailList = OrderDetailList,
                         CustomerAddress = mOrder.Customers.Address + ", " +
                                             mOrder.Customers.PostalCode + ", " +
                                             mOrder.Customers.City + ", " +
@@ -144,18 +288,35 @@ namespace WebApplication.Controllers
                         EmployeeName = mOrder.Employees.FirstName + " " +
                                         mOrder.Employees.LastName,
                         OrderDate = mOrder.OrderDate.Value,
-                        OrderGrandTotal = OrderDetailList.Sum(x => x.OrderTotalCost)
-                    }
+                        OrderGrandTotal = OrderDetailList.Sum(x => x.OrderTotalCost),
+                        OrderDetailList = OrderDetailList,
+                    },
                 };
             }
-            return NestedOrderModel;
+            return mNestedOrderModel;
         }
 
-
-        /// Unverified
-        private NestedOrderModel UpdateOrder(int OrderID)
+        private void TriggerBootstrapAlerts(AlertType Type, string Message)
         {
-            var NestedOrderModel = new NestedOrderModel();
+            string _type;
+            switch (Type)
+            {
+                case AlertType.Info: _type = "alert-info"; break;
+                case AlertType.Warning: _type = "alert-warning"; break;
+                case AlertType.Danger: _type = "alert-danger"; break;
+                case AlertType.Success: _type = "alert-success"; break;
+                default: _type = "alert-danger"; break;
+            }
+
+            TempData["Alerts"] = new Alerts
+            {
+                Type = _type,
+                Message = Message
+            };
+        }
+
+        private Orders UpdateOrders(int OrderID, NestedOrderModel NestedOrderModel)
+        {
             var mOrder = db.Orders.Find(OrderID);
             if (mOrder != null)
             {
@@ -170,220 +331,38 @@ namespace WebApplication.Controllers
                 catch (DbUpdateException exception)
                 {
                     Debug.WriteLine(exception.Message);
+                    TriggerBootstrapAlerts(AlertType.Danger, "500 Internal Server Error. " + exception.Message + ".");
                 }
             }
-            return NestedOrderModel;
+
+            return mOrder;
         }
 
-        private bool DeleteOrderDetails(int? OrderID)
+        private OrderDetails UpdateOrderDetails(int OrderID, int ProductID, NestedOrderModel NestedOrderModel)
         {
-            if (OrderID != null)
+            var mOrderDetails = new OrderDetails();
+            if (DeleteOrderDetails(OrderID, ProductID))
             {
-                var Model = new OrderDetails { OrderID = OrderID.Value };
-                if (Model != null)
+                mOrderDetails = new OrderDetails
                 {
-                    db.OrderDetails.Attach(Model);
-                    db.OrderDetails.Remove(Model);
-                    try
-                    {
-                        db.SaveChanges();
-                    }
-                    catch (DbUpdateException exception)
-                    {
-                        Debug.WriteLine(exception.Message);
-                        return false;
-                    }
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private bool DeleteOrder(int? OrderID)
-        {
-            if (OrderID != null)
-            {
-                var Model = new Orders { OrderID = OrderID.Value };
-                if (Model != null)
-                {
-                    db.Orders.Attach(Model);
-                    db.Orders.Remove(Model);
-                    try
-                    {
-                        db.SaveChanges();
-                    }
-                    catch (DbUpdateException exception)
-                    {
-                        Debug.WriteLine(exception.Message);
-                        return false;
-                    }
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        [HttpGet]
-        public ActionResult Delete(int? OrderID, string Button)
-        {
-            if (OrderID == null)
-            {
-                ViewBag.AlertMessage = "Unknown parameter found! Delete action cancelled.";
-                ViewBag.AlertType = "Danger";
-            }
-            else
-            {
-                if (Button == "Order")
-                {
-                    if (!DeleteOrderDetails(OrderID.Value))
-                    {
-                        ViewBag.AlertMessage = "Unable to delete Order Detail. Delete action cancelled.";
-                        ViewBag.AlertType = "Danger";
-                        return RedirectToAction("Details", new { OrderID = OrderID });
-                    }
-                    if (!DeleteOrder(OrderID.Value))
-                    {
-                        ViewBag.AlertMessage = "Unable to delete Order. Delete action cancelled.";
-                        ViewBag.AlertType = "Danger";
-                        return RedirectToAction("Details", new { OrderID = OrderID });
-                    }
-
-                    ViewBag.AlertMessage = "Delete successfully!";
-                    ViewBag.AlertType = "Success";
-
-                }
-                else if (Button == "OrderDetails")
-                {
-                    if (!DeleteOrderDetails(OrderID.Value))
-                    {
-                        ViewBag.AlertMessage = "Unable to delete Order Detail. Delete action cancelled.";
-                        ViewBag.AlertType = "Danger";
-                        return RedirectToAction("Details", new { OrderID = OrderID });
-                    }
-
-                    ViewBag.AlertMessage = "Delete successfully!";
-                    ViewBag.AlertType = "Success";
-                }
-                else
-                {
-                    ViewBag.AlertMessage = "Unknown parameter found! Delete action cancelled.";
-                    ViewBag.AlertType = "Danger";
-                    return RedirectToAction("Details", new { OrderID = OrderID });
-                }
-            }
-            return RedirectToAction("Index");
-        }
-
-
-        public ActionResult Details(string Mode, int? OrderID)
-        {
-            if (!string.IsNullOrEmpty(Mode) && !(Mode == "EditOrder" || Mode == "EditOrderDetails"))
-            {
-                return RedirectToAction("Index");
-            }
-
-            ViewBag.DropDownList_CustomerName = db.Customers.OrderBy(x => x.ContactName).Select(x => new SelectListItem
-            {
-                Text = x.ContactName,
-                Value = x.CustomerID.ToString()
-            });
-            ViewBag.DropDownList_EmployeeName = db.Employees.OrderBy(x => x.FirstName).ThenBy(x => x.LastName).Select(x => new SelectListItem
-            {
-                Text = x.FirstName + " " + x.LastName,
-                Value = x.EmployeeID.ToString()
-            });
-
-            // New Report
-            if (OrderID == null)
-            {
-                if (Mode == "EditOrder")
-                {
-                    var NestedOrderModel = new NestedOrderModel
-                    {
-                        OrderModel = new OrderModel
-                        {
-                            OrderDate = DateTime.Now,
-                        },
-                    };
-                    return View(NestedOrderModel);
-                }
-                else
-                {
-                    return RedirectToAction("Index");
-                }
-            }
-            // Retrieve Order Report & Order Details
-            else
-            {
-                var NestedOrderModel = RetrieveOrder(OrderID.Value);
-                if (NestedOrderModel != null)
-                {
-                    return View(NestedOrderModel);
-                }
-                else
-                {
-                    return new HttpStatusCodeResult(HttpStatusCode.NotFound);
-                }
-            }
-        }
-
-
-
-        // Do i still have all the OrderDetails list on posted?
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Details(int? OrderID, string Mode, NestedOrderModel NestedOrderModel)
-        {
-            ModelState.Clear();
-
-            if (!string.IsNullOrEmpty(Mode) && !(Mode == "EditOrder" || Mode == "EditOrderDetails"))
-            {
-                return RedirectToAction("Index");
-            }
-
-            int? NewOrderID = null;
-            if (ModelState.IsValid && TryValidateModel(NestedOrderModel.OrderModel, "OrderModel") &&
-               Mode == "EditOrder")
-            {
-                var mOrder = new Orders();
-                if (OrderID == null)
-                {
-                    mOrder.OrderDate = NestedOrderModel.OrderModel.OrderDate;
-                    mOrder.EmployeeID = NestedOrderModel.OrderModel.EmployeeID;
-                    mOrder.CustomerID = NestedOrderModel.OrderModel.CustomerID;
-                    db.Orders.Add(mOrder);
-                }
-                else
-                {
-                    // Update Order Report
-                    mOrder = db.Orders.Find(OrderID);
-                    if (mOrder != null)
-                    {
-                        mOrder.OrderDate = NestedOrderModel.OrderModel.OrderDate;
-                        mOrder.EmployeeID = NestedOrderModel.OrderModel.EmployeeID;
-                        mOrder.CustomerID = NestedOrderModel.OrderModel.CustomerID;
-                    }
-                    else
-                    {
-                        return new HttpStatusCodeResult(HttpStatusCode.NotFound);
-                    }
-                }
-
+                    OrderID = OrderID,
+                    ProductID = NestedOrderModel.OrderDetailsModel.ProductID,
+                    Quantity = (short)NestedOrderModel.OrderDetailsModel.OrderQuantity
+                };
+                db.OrderDetails.Add(mOrderDetails);
                 try
                 {
                     db.SaveChanges();
-                    NewOrderID = mOrder.OrderID;
-
                 }
                 catch (DbUpdateException exception)
                 {
                     Debug.WriteLine(exception.Message);
+                    TriggerBootstrapAlerts(AlertType.Danger, "500 Internal Server Error. " + exception.Message + ".");
                 }
             }
-
-            return RedirectToAction("Details", new { OrderID = NewOrderID });
+            return mOrderDetails;
         }
+
 
         public ActionResult Index(
             string Page,
@@ -411,7 +390,190 @@ namespace WebApplication.Controllers
             }
         }
 
+        public ActionResult Details(int? OrderID, string Mode)
+        {
+            if (string.IsNullOrEmpty(Mode) || !(Mode == "Edit" || Mode == "View"))
+            {
+                TriggerBootstrapAlerts(AlertType.Danger, "Bad Request 3. Invalid model.");
+                return RedirectToAction("Index");
+            }
 
+            ViewBag.DropDownList_CustomerName = db.Customers.OrderBy(x => x.ContactName).Select(x => new SelectListItem
+            {
+                Text = x.ContactName,
+                Value = x.CustomerID.ToString()
+            });
+            ViewBag.DropDownList_EmployeeName = db.Employees.OrderBy(x => x.FirstName).ThenBy(x => x.LastName).Select(x => new SelectListItem
+            {
+                Text = x.FirstName + " " + x.LastName,
+                Value = x.EmployeeID.ToString()
+            });
+
+            var mNestedOrderModel = new NestedOrderModel();
+            if (OrderID == null)
+            {
+                if (Mode == "Edit")
+                {
+                    mNestedOrderModel = new NestedOrderModel
+                    {
+                        OrderModel = new OrderModel
+                        {
+                            OrderDate = DateTime.Now,
+                        },
+                    };
+                }
+                else
+                {
+                    TriggerBootstrapAlerts(AlertType.Danger, "Bad Request 5. Invalid model.");
+                    return RedirectToAction("Index");
+                }
+            }
+            else
+            {
+                mNestedOrderModel = RetrieveOrders(OrderID.Value);
+                if (mNestedOrderModel == null)
+                {
+                    TriggerBootstrapAlerts(AlertType.Danger, "Bad Request 4. Invalid model.");
+                    return RedirectToAction("Index");
+                }
+            }
+
+            return View(mNestedOrderModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Details(int? OrderID, int? ProductID, string Mode, string button, NestedOrderModel NestedOrderModel)
+        {
+            ModelState.Clear();
+            TempData.Clear();
+
+            if (NestedOrderModel is null ||
+                string.IsNullOrEmpty(Mode) || Mode != "Edit" ||
+                string.IsNullOrEmpty(button) || !(button == "CreateOrders" || button == "UpdateOrders" || button == "DeleteOrders" || button == "CreateOrderDetails" || button == "UpdateOrderDetails" || button == "DeleteOrderDetails"))
+            {
+                TriggerBootstrapAlerts(AlertType.Danger, "Bad Request 1. Invalid model.");
+                return RedirectToAction("Details", new { OrderID = OrderID, Mode = "View" });
+            }
+
+            if (((button == "UpdateOrders" || button == "DeleteOrders") && !OrderID.HasValue) ||
+                ((button == "CreateOrderDetails" || button == "UpdateOrderDetails" || button == "DeleteOrderDetails") && !(OrderID.HasValue && ProductID.HasValue)))
+            {
+                TriggerBootstrapAlerts(AlertType.Danger, "Bad Request 2. Invalid model.");
+                return RedirectToAction("Details", new { OrderID = OrderID, Mode = "View" });
+            }
+
+
+            int? NewOrderID = null;
+            var mOrder = new Orders();
+            var mOrderDetails = new OrderDetails();
+
+            if (button.Contains("Orders"))
+            {
+                if (button == "DeleteOrders")
+                {
+                    if (DeleteOrders(OrderID.Value))
+                    {
+                        TriggerBootstrapAlerts(AlertType.Success, "Successfully delete order report.");
+                    }
+                    else
+                    {
+                        TriggerBootstrapAlerts(AlertType.Danger, "Failed to delete order report.");
+                    }
+                    return RedirectToAction("Index");
+                }
+                else
+                {
+                    if (ModelState.IsValid && TryValidateModel(NestedOrderModel.OrderModel, "OrderModel"))
+                    {
+                        if (button == "CreateOrders")
+                        {
+                            mOrder = CreateOrders(NestedOrderModel);
+                            if (mOrder == null)
+                            {
+                                TriggerBootstrapAlerts(AlertType.Danger, "Failed to create new order report.");
+                            }
+                            else
+                            {
+                                NewOrderID = mOrder.OrderID;
+                                TriggerBootstrapAlerts(AlertType.Success, "Successfully create new order report.");
+                            }
+                        }
+                        if (button == "UpdateOrders")
+                        {
+                            mOrder = UpdateOrders(OrderID.Value, NestedOrderModel);
+                            if (mOrder == null)
+                            {
+                                TriggerBootstrapAlerts(AlertType.Danger, "Failed to update order report.");
+                            }
+                            else
+                            {
+                                TriggerBootstrapAlerts(AlertType.Success, "Successfully update order report.");
+                            }
+                            NewOrderID = OrderID.Value;
+                        }
+                    }
+                    else
+                    {
+                        TriggerBootstrapAlerts(AlertType.Danger, "Bad Request. Invalid model.");
+                        return RedirectToAction("Details", new { OrderID = OrderID, Mode = "View" });
+                    }
+                }
+            }
+
+            if (button.Contains("OrderDetails"))
+            {
+                if (button == "DeleteOrderDetails")
+                {
+                    if (DeleteOrderDetails(OrderID.Value, ProductID.Value))
+                    {
+                        TriggerBootstrapAlerts(AlertType.Success, "Successfully delete order details.");
+                    }
+                    else
+                    {
+                        TriggerBootstrapAlerts(AlertType.Danger, "Failed to delete order details.");
+                    }
+                }
+                else
+                {
+                    if (ModelState.IsValid && TryValidateModel(NestedOrderModel.OrderDetailsModel, "OrderDetailsModel"))
+                    {
+                        if (button == "CreateOrderDetails")
+                        {
+                            mOrderDetails = CreateOrderDetails(NestedOrderModel);
+                            if (mOrderDetails == null)
+                            {
+                                TriggerBootstrapAlerts(AlertType.Danger, "Failed to create order details.");
+                            }
+                            else
+                            {
+                                TriggerBootstrapAlerts(AlertType.Success, "Successfully create order details.");
+                            }
+                        }
+                        if (button == "UpdateOrderDetails")
+                        {
+                            mOrderDetails = UpdateOrderDetails(OrderID.Value, ProductID.Value, NestedOrderModel);
+                            if (mOrderDetails == null)
+                            {
+                                TriggerBootstrapAlerts(AlertType.Danger, "Failed to update order details.");
+                            }
+                            else
+                            {
+                                TriggerBootstrapAlerts(AlertType.Success, "Successfully update order details.");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        TriggerBootstrapAlerts(AlertType.Danger, "Bad Request. Invalid model.");
+                        return RedirectToAction("Details", new { OrderID = OrderID, Mode = "View" });
+                    }
+                }
+                NewOrderID = OrderID.Value;
+            }
+
+            return RedirectToAction("Details", new { OrderID = NewOrderID, Mode = "View" });
+        }
 
     }
 }
